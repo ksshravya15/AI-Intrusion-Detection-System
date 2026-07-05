@@ -1,42 +1,96 @@
 import os
 import glob
+import joblib
+import numpy as np
 import pandas as pd
 
-# 1. Automatically find the correct 'MachineLearningCVE' folder
-script_dir = os.path.dirname(os.path.abspath(__file__))  # points to 'src'
-project_root = os.path.dirname(script_dir)              # points to the project root
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-# This sets the folder path perfectly to: dataset/MachineLearningCVE
-folder_path = os.path.join(project_root, "dataset", "MachineLearningCVE")
+# Get project root
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
 
-print("--- PATH CHECK ---")
-print(f"Looking for CSV files inside:\n--> {folder_path}\n")
+# Dataset folder
+folder_path = os.path.join(project_root, "dataset", "MachineLearningCSV", "MachineLearningCVE")
 
-# 2. Find all CSV files inside that folder
+# Find all CSV files
 csv_files = glob.glob(os.path.join(folder_path, "*.csv"))
 
-print(f"Number of CSV files found: {len(csv_files)}")
-print("CSV files list:")
-for file in csv_files:
-    print(f"- {os.path.basename(file)}")
+print(f"Found {len(csv_files)} CSV files")
 
-# 3. SAFETY NET: Stop the script nicely if no files were found (instead of crashing)
-if len(csv_files) == 0:
-    print("\n[STOP] No CSV files were found! Please check:")
-    print("1. Are the files completely downloaded from OneDrive?")
-    print("2. Are the CSV files physically inside the 'dataset/MachineLearningCVE' folder?")
-    exit()
-
-# 4. Read and combine all CSV files safely
-dataframes = []
+# Load all files
+dfs = []
 for file in csv_files:
-    print(f"Loading {os.path.basename(file)}...")
+    print("Loading:", os.path.basename(file))
     df = pd.read_csv(file, low_memory=False)
-    dataframes.append(df)
+    dfs.append(df)
 
-# 5. Combine into one DataFrame
-combined_df = pd.concat(dataframes, ignore_index=True)
+# Combine all files
+df = pd.concat(dfs, ignore_index=True)
 
-print("\nAll files loaded successfully!")
-print("Dataset Shape:", combined_df.shape)
-print(combined_df.head())
+print("Dataset Shape:", df.shape)
+
+# Clean column names
+df.columns = df.columns.str.strip()
+
+# Replace infinity values
+df.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+# Remove missing values
+df.dropna(inplace=True)
+
+# Features and target
+X = df.drop("Label", axis=1)
+y = df["Label"]
+
+# Convert all columns to numeric
+X = X.apply(pd.to_numeric, errors="coerce")
+
+# Remove invalid rows
+X.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+valid_rows = X.notna().all(axis=1)
+X = X[valid_rows]
+y = y[valid_rows]
+
+# Encode labels
+encoder = LabelEncoder()
+y = encoder.fit_transform(y)
+
+# Split dataset
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42
+)
+
+# Train model
+print("Training model...")
+model = RandomForestClassifier(
+    n_estimators=100,
+    random_state=42,
+    n_jobs=-1
+)
+
+model.fit(X_train, y_train)
+
+# Predict
+y_pred = model.predict(X_test)
+
+# Results
+print("\nAccuracy:", accuracy_score(y_test, y_pred))
+
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+print("\nConfusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
+
+# Save model
+joblib.dump(model, os.path.join(project_root, "intrusion_model.pkl"))
+joblib.dump(encoder, os.path.join(project_root, "label_encoder.pkl"))
+
+print("\nModel saved successfully!")

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Powered Intrusion Detection System</title>
+</head>
+<body>
+
+<h1>AI Powered Intrusion Detection System</h1>
+
+<h3>Upload Network Traffic CSV File</h3>
+
+<form action="/predict" method="POST" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".csv" required>
+    <br><br>
+    <input type="submit" value="Predict">
+</form>
+
+{% if result %}
+<hr>
+<h2>Prediction Result</h2>
+<p>{{ result }}</p>
+{% endif %}
+
+</body>
+</html>
