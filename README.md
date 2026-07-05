@@ -3,8 +3,8 @@ AI-Powered Intrusion Detection System
 Project Overview
 
 This project is an AI-based Intrusion Detection System (IDS) that detects malicious network traffic using Machine Learning. It is built using Python and Flask and trained on the CIC-IDS-2017 dataset.
-
-Features
+ 
+ Features
 
 - Upload a network traffic CSV file.
 - Detect normal (BENIGN) and malicious (ATTACK) traffic.
